@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 # Osnovna šema za uređaj - zajednička za kreiranje i prikaz
@@ -18,8 +18,7 @@ class Device(DeviceBase):
     id: int  # Jedinstveni ID
     rack_id: Optional[int] = None  # ID rack-a ako je dodeljen
 
-    class Config:
-        from_attributes = True  # Dozvoljava konverziju iz SQLAlchemy modela
+    model_config = ConfigDict(from_attributes=True)  # Dozvoljava konverziju iz SQLAlchemy modela
 
 # Osnovna šema za rack
 class RackBase(BaseModel):
@@ -39,12 +38,11 @@ class Rack(RackBase):
     current_power: float = 0.0  # Trenutna potrošnja
     current_units: int = 0  # Trenutno zauzete jedinice
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Šema za detaljan prikaz rack-a sa listom uređaja
 class RackWithDevices(Rack):
-    devices: list[Device] = []  # Lista uređaja u rack-u
+    devices: list[Device] = Field(default_factory=list)  # Lista uređaja u rack-u
 
 # Šema za zahtev balansiranja - lista uređaja i rack-ova
 class BalancingRequest(BaseModel):

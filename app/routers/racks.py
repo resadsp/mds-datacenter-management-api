@@ -14,7 +14,7 @@ def create_rack(rack: schemas.RackCreate, db: Session = Depends(get_db)):
     if db_rack:
         raise HTTPException(status_code=400, detail="Serijski broj već postoji")
 
-    db_rack = models.Rack(**rack.dict())
+    db_rack = models.Rack(**rack.model_dump())
     db.add(db_rack)
     db.commit()
     db.refresh(db_rack)
@@ -56,14 +56,24 @@ def update_rack(rack_id: int, rack: schemas.RackCreate, db: Session = Depends(ge
     if db_rack is None:
         raise HTTPException(status_code=404, detail="Rack nije pronađen")
 
-    # Proveravamo jedinstvenost serijskog broja
-    existing = db.query(models.Rack).filter(models.Rack.serial_number == rack.serial_number, models.Rack.id != rack_id).first()
+    existing = db.query(models.Rack).filter(
+        models.Rack.serial_number == rack.serial_number,
+        models.Rack.id != rack_id
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Serijski broj već postoji")
 
-    # Ažuriramo podatke
-    for key, value in rack.dict().items():
+    current_units = sum(d.units_occupied for d in db_rack.devices)
+    current_power = sum(d.power_consumption for d in db_rack.devices)
+
+    if rack.total_units < current_units:
+        raise HTTPException(status_code=400, detail="Novi total_units je manji od trenutne zauzetosti")
+    if rack.max_power < current_power:
+        raise HTTPException(status_code=400, detail="Novi max_power je manji od trenutne potrošnje")
+
+    for key, value in rack.model_dump().items():
         setattr(db_rack, key, value)
+
     db.commit()
     db.refresh(db_rack)
     return db_rack

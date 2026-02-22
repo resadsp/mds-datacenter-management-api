@@ -1,60 +1,69 @@
+import math
+
 def balance_devices(devices, racks):
     """
-    Algoritam za balansiranje uređaja po rack-ovima.
-
-    Cilj: Rasporediti uređaje tako da se postigne što ravnomernija iskorišćenost
-    maksimalne potrošnje energije po rack-ovima (0-100%).
-
-    Algoritam:
-    1. Sortira uređaje po potrošnji energije opadajuće (greedy pristup)
-    2. Za svaki uređaj pronalazi najbolji rack sa najviše preostale snage
-    3. Proverava da li uređaj staje (jedinice i snaga)
-    4. Ako ne može nigde da stane, dodaje u nedodeljene
-
-    Args:
-        devices: Lista dict-ova sa 'units_occupied' i 'power_consumption'
-        racks: Lista dict-ova sa 'total_units' i 'max_power'
-
-    Returns:
-        assignments: Lista tuple-a (device_index, rack_index)
-        unassigned: Lista indeksa uređaja koji nisu dodeljeni
+    Balansiranje po cilju što sličnije procentualne iskorišćenosti rack-ova.
+    Vraća:
+      - assignments: [(device_index, rack_index), ...]
+      - unassigned: [device_index, ...]
     """
-    # Sortiramo uređaje po potrošnji opadajuće za bolje balansiranje
-    device_indices = sorted(range(len(devices)), key=lambda i: devices[i]['power_consumption'], reverse=True)
+    if not racks:
+        return [], list(range(len(devices)))
 
-    assignments = []  # Lista uspešnih dodela
-    rack_usage = [{'units': 0, 'power': 0.0} for _ in racks]  # Trenutno stanje rack-ova
-    unassigned = []  # Nedodeljeni uređaji
+    device_indices = sorted(
+        range(len(devices)),
+        key=lambda i: (devices[i]["power_consumption"], devices[i]["units_occupied"]),
+        reverse=True,
+    )
 
-    # Prolazimo kroz svaki uređaj
-    for idx in device_indices:
-        device = devices[idx]
+    assignments = []
+    unassigned = []
+    rack_usage = [{"units": 0, "power": 0.0} for _ in racks]
+
+    total_max_power = sum(r["max_power"] for r in racks) or 1.0
+    assigned_power = 0.0
+
+    for d_idx in device_indices:
+        d = devices[d_idx]
         best_rack = None
-        best_remaining = -1  # Najbolja preostala snaga
+        best_score = float("inf")
 
-        # Tražimo najbolji rack za ovaj uređaj
+        target_after = (assigned_power + d["power_consumption"]) / total_max_power
+
         for r_idx, rack in enumerate(racks):
-            usage = rack_usage[r_idx]
+            used = rack_usage[r_idx]
 
-            # Proveravamo da li uređaj staje u rack
-            if (usage['units'] + device['units_occupied'] <= rack['total_units'] and
-                usage['power'] + device['power_consumption'] <= rack['max_power']):
+            fits_units = used["units"] + d["units_occupied"] <= rack["total_units"]
+            fits_power = used["power"] + d["power_consumption"] <= rack["max_power"]
+            if not (fits_units and fits_power):
+                continue
 
-                # Računamo preostalu snagu
-                remaining_power = rack['max_power'] - usage['power']
+            projected_utils = []
+            for j, r in enumerate(racks):
+                p = rack_usage[j]["power"]
+                if j == r_idx:
+                    p += d["power_consumption"]
+                projected_utils.append(p / r["max_power"] if r["max_power"] > 0 else 1.0)
 
-                # Biramo rack sa najviše preostale snage
-                if remaining_power > best_remaining:
-                    best_remaining = remaining_power
-                    best_rack = r_idx
+            # Score: što manja devijacija od cilja + manji spread među rack-ovima
+            mean_u = sum(projected_utils) / len(projected_utils)
+            std_u = math.sqrt(sum((u - mean_u) ** 2 for u in projected_utils) / len(projected_utils))
+            spread = max(projected_utils) - min(projected_utils)
+            target_dist = abs(projected_utils[r_idx] - target_after)
 
-        # Ako smo našli odgovarajući rack, dodeljujemo
-        if best_rack is not None:
-            assignments.append((idx, best_rack))
-            rack_usage[best_rack]['units'] += device['units_occupied']
-            rack_usage[best_rack]['power'] += device['power_consumption']
-        else:
-            # Uređaj ne može da se smesti nigde
-            unassigned.append(idx)
+            score = (2.0 * target_dist) + (1.0 * std_u) + (0.5 * spread)
+
+            if score < best_score:
+                best_score = score
+                best_rack = r_idx
+
+        if best_rack is None:
+            unassigned.append(d_idx)
+            continue
+
+        rack_usage[best_rack]["units"] += d["units_occupied"]
+        rack_usage[best_rack]["power"] += d["power_consumption"]
+        assigned_power += d["power_consumption"]
+        assignments.append((d_idx, best_rack))
 
     return assignments, unassigned

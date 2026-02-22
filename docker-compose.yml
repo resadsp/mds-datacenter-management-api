@@ -1,0 +1,7 @@
+services:
+  api:
+    build: .
+    container_name: mds-datacenter-api
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

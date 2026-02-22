@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from app.database import engine
 from app import models
-from app.routers import devices, racks, balancing, stats
+from app.routers import devices, racks, balancing, stats, seed
 
 # Kreiramo tabele u bazi ako ne postoje
 models.Base.metadata.create_all(bind=engine)
@@ -19,6 +19,8 @@ app.include_router(devices.router, prefix="/api/v1", tags=["Uređaji"])
 app.include_router(racks.router, prefix="/api/v1", tags=["Rack-ovi"])
 app.include_router(balancing.router, prefix="/api/v1", tags=["Balansiranje"])
 app.include_router(stats.router, prefix="/api/v1", tags=["Statistike"])
+app.include_router(seed.router, prefix="/api/v1")
+
 
 # Health check endpoint
 @app.get("/health")
@@ -56,6 +58,45 @@ def get_dashboard():
         .progress { border-radius: 10px; height: 20px; }
         .modal-content { border-radius: 15px; }
         .floating-btn { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+        .floating-alerts {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            width: min(420px, calc(100vw - 40px));
+        }
+        .alert-toast {
+            margin-bottom: 10px;
+            animation: slideIn 0.2s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-stack {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 3000;
+            width: min(420px, calc(100vw - 32px));
+        }
+
+        .toast-item {
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.12);
+            animation: slideIn .18s ease-out;
+        }
+
+        .inline-feedback {
+            margin-top: 10px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-6px); opacity: 0; }
+            to   { transform: translateY(0); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -215,27 +256,28 @@ def get_dashboard():
                     <form id="addDeviceForm">
                         <div class="mb-3">
                             <label class="form-label">Naziv</label>
-                            <input type="text" class="form-control" id="deviceName" required>
+                            <input type="text" class="form-control" id="deviceName" name="name" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Opis</label>
-                            <input type="text" class="form-control" id="deviceDesc">
+                            <input type="text" class="form-control" id="deviceDesc" name="description">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Serijski Broj</label>
-                            <input type="text" class="form-control" id="deviceSerial" required>
+                            <input type="text" class="form-control" id="deviceSerial" name="serial_number" required>
                         </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <label class="form-label">Jedinice</label>
-                                <input type="number" class="form-control" id="deviceUnits" min="1" required>
+                                <input type="number" class="form-control" id="deviceUnits" name="units_occupied" min="1" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Snaga (W)</label>
-                                <input type="number" class="class="form-control" id="devicePower" min="1" required>
+                                <input type="number" class="form-control" id="devicePower" name="power_consumption" min="1" required>
                             </div>
                         </div>
                     </form>
+                    <div id="deviceFeedback"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Otkaži</button>
@@ -257,27 +299,28 @@ def get_dashboard():
                     <form id="addRackForm">
                         <div class="mb-3">
                             <label class="form-label">Naziv</label>
-                            <input type="text" class="form-control" id="rackName" required>
+                            <input type="text" class="form-control" id="rackName" name="name" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Opis</label>
-                            <input type="text" class="form-control" id="rackDesc">
+                            <input type="text" class="form-control" id="rackDesc" name="description">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Serijski Broj</label>
-                            <input type="text" class="form-control" id="rackSerial" required>
+                            <input type="text" class="form-control" id="rackSerial" name="serial_number" required>
                         </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <label class="form-label">Ukupno Jedinica</label>
-                                <input type="number" class="form-control" id="rackUnits" min="1" required>
+                                <input type="number" class="form-control" id="rackUnits" name="total_units" min="1" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Maks. Snaga (W)</label>
-                                <input type="number" class="form-control" id="rackPower" min="1" required>
+                                <input type="number" class="form-control" id="rackPower" name="max_power" min="1" required>
                             </div>
                         </div>
                     </form>
+                    <div id="rackFeedback"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Otkaži</button>
@@ -312,33 +355,115 @@ def get_dashboard():
         </button>
     </div>
 
+    <div id="floatingAlerts" class="floating-alerts"></div>
+
+    <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const API_BASE = '/api/v1';
+        const API_BASE = "/api/v1";
 
-        // Utility functions
-        async function apiCall(endpoint, options = {}) {
-            try {
-                const response = await fetch(`${API_BASE}${endpoint}`, options);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                showAlert('Greška: ' + error.message, 'danger');
-                return null;
+        function toast(message, type = "info", ms = 5000) {
+            const stack = document.getElementById("toastStack");
+            const el = document.createElement("div");
+            el.className = `alert alert-${type} alert-dismissible fade show toast-item`;
+            el.setAttribute("role", "alert");
+            el.innerHTML = `
+              <div class="me-4">${message}</div>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            stack.appendChild(el);
+            setTimeout(() => el.remove(), ms);
+        }
+
+        function setInlineFeedback(containerId, message, type = "danger") {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = `
+              <div class="alert alert-${type} inline-feedback" role="alert">
+                ${message}
+              </div>
+            `;
+        }
+
+        function clearInlineFeedback(containerId) {
+            const container = document.getElementById(containerId);
+            if (container) container.innerHTML = "";
+        }
+
+        function parseApiError(status, payload) {
+            // FastAPI 422: { detail: [{loc, msg, ...}, ...] }
+            if (payload && Array.isArray(payload.detail)) {
+                const parts = payload.detail.map(e => {
+                    const loc = Array.isArray(e.loc) ? e.loc.join(".") : "field";
+                    return `${loc}: ${e.msg}`;
+                });
+                return `Validacija (${status}): ${parts.join(" | ")}`;
+            }
+
+            if (payload?.detail && typeof payload.detail === "string") {
+                return `Greška ${status}: ${payload.detail}`;
+            }
+
+            if (payload?.message && typeof payload.message === "string") {
+                return `Greška ${status}: ${payload.message}`;
+            }
+
+            return `Greška ${status}: Neuspešan zahtev.`;
+        }
+
+        function focusFirstInvalidField(payload) {
+            if (!payload || !Array.isArray(payload.detail)) return;
+            const first = payload.detail.find(e => Array.isArray(e.loc) && e.loc.includes("body"));
+            if (!first) return;
+
+            const field = first.loc[first.loc.length - 1];
+            const map = {
+                name: ["deviceName", "rackName"],
+                description: ["deviceDesc", "rackDesc"],
+                serial_number: ["deviceSerial", "rackSerial"],
+                units_occupied: ["deviceUnits"],
+                power_consumption: ["devicePower"],
+                total_units: ["rackUnits"],
+                max_power: ["rackPower"]
+            };
+
+            const candidates = map[field] || [];
+            for (const id of candidates) {
+                const input = document.getElementById(id);
+                if (input && input.offsetParent !== null) {
+                    input.focus();
+                    return;
+                }
             }
         }
 
-        function showAlert(message, type = 'info') {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.querySelector('.container').prepend(alertDiv);
-            setTimeout(() => alertDiv.remove(), 5000);
+        async function apiCall(endpoint, options = {}) {
+            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            const ct = response.headers.get("content-type") || "";
+            const payload = ct.includes("application/json") ? await response.json() : await response.text();
+
+            if (!response.ok) {
+                const message = parseApiError(response.status, payload);
+                const err = new Error(message);
+                err.status = response.status;
+                err.payload = payload;
+                throw err;
+            }
+            return payload;
         }
+
+        // Primer upotrebe u submit handler-u:
+        // clearInlineFeedback("deviceFeedback");
+        // try {
+        //   await apiCall("/devices/", {...});
+        //   toast("Uređaj uspešno dodat.", "success");
+        //   setInlineFeedback("deviceFeedback", "Uređaj uspešno dodat.", "success");
+        // } catch (e) {
+        //   toast(e.message, "danger");
+        //   setInlineFeedback("deviceFeedback", e.message, "danger");
+        //   if (e.status === 422) focusFirstInvalidField(e.payload);
+        // }
 
         // Load data functions
         async function loadStats() {
@@ -413,6 +538,8 @@ def get_dashboard():
 
         // Add functions
         async function addDevice() {
+            clearInlineFeedback("deviceFeedback");
+
             const device = {
                 name: document.getElementById('deviceName').value,
                 description: document.getElementById('deviceDesc').value,
@@ -421,22 +548,32 @@ def get_dashboard():
                 power_consumption: parseFloat(document.getElementById('devicePower').value)
             };
 
-            const result = await apiCall('/devices/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(device)
-            });
+            try {
+                const result = await apiCall('/devices/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(device)
+                });
 
-            if (result) {
-                showAlert('Uređaj uspešno dodat!', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('addDeviceModal')).hide();
-                document.getElementById('addDeviceForm').reset();
-                loadDevices();
-                loadStats();
+                if (result) {
+                    toast('Uređaj uspešno dodat!', 'success');
+                    setInlineFeedback("deviceFeedback", "Uređaj uspešno dodat!", "success");
+                    bootstrap.Modal.getInstance(document.getElementById('addDeviceModal')).hide();
+                    document.getElementById('addDeviceForm').reset();
+                    loadDevices();
+                    loadStats();
+                    initChart();
+                }
+            } catch (e) {
+                toast(e.message, 'danger');
+                setInlineFeedback("deviceFeedback", e.message, "danger");
+                if (e.status === 422) focusFirstInvalidField(e.payload);
             }
         }
 
         async function addRack() {
+            clearInlineFeedback("rackFeedback");
+
             const rack = {
                 name: document.getElementById('rackName').value,
                 description: document.getElementById('rackDesc').value,
@@ -445,38 +582,50 @@ def get_dashboard():
                 max_power: parseFloat(document.getElementById('rackPower').value)
             };
 
-            const result = await apiCall('/racks/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(rack)
-            });
+            try {
+                const result = await apiCall('/racks/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rack)
+                });
 
-            if (result) {
-                showAlert('Rack uspešno dodat!', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('addRackModal')).hide();
-                document.getElementById('addRackForm').reset();
-                loadRacks();
-                loadStats();
+                if (result) {
+                    toast('Rack uspešno dodat!', 'success');
+                    setInlineFeedback("rackFeedback", "Rack uspešno dodat!", "success");
+                    bootstrap.Modal.getInstance(document.getElementById('addRackModal')).hide();
+                    document.getElementById('addRackForm').reset();
+                    loadRacks();
+                    loadStats();
+                    initChart();
+                }
+            } catch (e) {
+                toast(e.message, 'danger');
+                setInlineFeedback("rackFeedback", e.message, "danger");
+                if (e.status === 422) focusFirstInvalidField(e.payload);
             }
         }
 
         async function deleteDevice(id) {
-            if (confirm('Da li ste sigurni da želite da obrišete ovaj uređaj?')) {
+            if (!confirm('Da li ste sigurni da želite da obrišete ovaj uređaj?')) return;
+            try {
                 const result = await apiCall(`/devices/${id}`, { method: 'DELETE' });
-                if (result) {
-                    showAlert('Uređaj obrisan!', 'success');
+                if (result !== null) {
+                    toast('Uređaj obrisan!', 'success');
                     loadDevices();
                     loadStats();
+                    initChart();
                 }
+            } catch (e) {
+                toast(e.message, 'danger');
             }
         }
 
         async function runBalancing() {
-            // Get current devices and racks for demo
-            const devices = await apiCall('/devices/');
-            const racks = await apiCall('/racks/');
+            try {
+                const devices = await apiCall('/devices/');
+                const racks = await apiCall('/racks/');
+                if (!devices || !racks) return;
 
-            if (devices && racks) {
                 const balancingData = {
                     devices: devices.map(d => ({
                         name: d.name,
@@ -499,6 +648,7 @@ def get_dashboard():
                 });
 
                 if (result) {
+                    toast('Balansiranje uspešno završeno.', 'success');
                     document.getElementById('balancingResult').innerHTML = `
                         <div class="alert alert-success">
                             <h6><i class="fas fa-check-circle"></i> Balansiranje uspešno!</h6>
@@ -510,6 +660,11 @@ def get_dashboard():
                         </div>
                     `;
                 }
+            } catch (e) {
+                toast(e.message, 'danger');
+                document.getElementById('balancingResult').innerHTML = `
+                    <div class="alert alert-danger">${e.message}</div>
+                `;
             }
         }
 
@@ -537,9 +692,9 @@ def get_dashboard():
                 details += `<div class="col-sm-6"><strong>Iskorišćenost:</strong></div>`;
                 details += `<div class="col-sm-6">`;
                 details += `<div class="progress" style="width: 100px;">`;
-                details += `<div class="progress-bar bg-${utilization > 80 ? 'danger' : utilization > 60 ? 'warning' : 'success'}" style="width: ${utilization}%">`;
-                details += `${utilization}%`;
-                details += `</div></div></div>`;
+                details += `<div class="progress-bar bg-${utilization > 80 ? 'danger' : utilization > 60 ? 'warning' : 'success'}" style="width: ${utilization}%">
+                    ${utilization}%
+                </div></div></div>`;
                 details += `</div>`;
 
                 if (rack.devices && rack.devices.length > 0) {

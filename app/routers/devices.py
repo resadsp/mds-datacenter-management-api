@@ -15,7 +15,7 @@ def create_device(device: schemas.DeviceCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Serijski broj već postoji")
 
     # Kreiramo novi uređaj
-    db_device = models.Device(**device.dict())
+    db_device = models.Device(**device.model_dump())
     db.add(db_device)
     db.commit()
     db.refresh(db_device)
@@ -45,14 +45,29 @@ def update_device(device_id: int, device: schemas.DeviceCreate, db: Session = De
     if db_device is None:
         raise HTTPException(status_code=404, detail="Uređaj nije pronađen")
 
-    # Proveravamo jedinstvenost serijskog broja
-    existing = db.query(models.Device).filter(models.Device.serial_number == device.serial_number, models.Device.id != device_id).first()
+    existing = db.query(models.Device).filter(
+        models.Device.serial_number == device.serial_number,
+        models.Device.id != device_id
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Serijski broj već postoji")
 
-    # Ažuriramo podatke
-    for key, value in device.dict().items():
+    # Ako je uređaj već u rack-u, update ne sme probiti kapacitet rack-a
+    if db_device.rack_id is not None:
+        rack = db.query(models.Rack).filter(models.Rack.id == db_device.rack_id).first()
+
+        other_devices = [d for d in rack.devices if d.id != db_device.id]
+        used_units_without_this = sum(d.units_occupied for d in other_devices)
+        used_power_without_this = sum(d.power_consumption for d in other_devices)
+
+        if used_units_without_this + device.units_occupied > rack.total_units:
+            raise HTTPException(status_code=400, detail="Update prelazi kapacitet jedinica rack-a")
+        if used_power_without_this + device.power_consumption > rack.max_power:
+            raise HTTPException(status_code=400, detail="Update prelazi kapacitet snage rack-a")
+
+    for key, value in device.model_dump().items():
         setattr(db_device, key, value)
+
     db.commit()
     db.refresh(db_device)
     return db_device
