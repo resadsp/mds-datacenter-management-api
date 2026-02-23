@@ -284,4 +284,4 @@ wsl --update
 ## 12) Verzija
 
 - API verzija: `1.0.0`
-- Datum finalne pripreme: 24.02.2026.
+- Datum finalne pripreme: 23.02.2026.
