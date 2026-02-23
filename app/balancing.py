@@ -1,11 +1,14 @@
+"""Algoritam balansiranja koji koristi endpoint /balance."""
+
 import math
 
 def balance_devices(devices, racks):
     """
-    Balansiranje po cilju što sličnije procentualne iskorišćenosti rack-ova.
+    Predlaže raspored uređaja po rack-ovima sa ciljem ujednačene iskorišćenosti.
+
     Vraća:
-      - assignments: [(device_index, rack_index), ...]
-      - unassigned: [device_index, ...]
+        assignments: lista parova (device_index, rack_index)
+        unassigned: lista indeksa uređaja koji nisu mogli biti dodeljeni
     """
     if not racks:
         return [], list(range(len(devices)))

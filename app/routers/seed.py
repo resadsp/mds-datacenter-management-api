@@ -1,4 +1,5 @@
-# routers/seed.py
+"""Seed endpoint i pomoćna funkcija za unos demo/test podataka."""
+
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from app.database import SessionLocal
@@ -8,6 +9,7 @@ router = APIRouter(prefix="/seed", tags=["Seed"])
 
 
 def seed_data():
+    """Popunjava bazu rack-ovima, uređajima i početnim dodelama (jednokratno)."""
     db = SessionLocal()
     try:
         if db.query(models.Rack).first():
@@ -87,8 +89,9 @@ def seed_data():
         db.close()
 
 
-@router.post("", summary="Seed database with full test data")
+@router.post("", summary="Seed baze kompletnim test podacima")
 def run_seed():
+    """HTTP endpoint omotač oko pomoćne funkcije seed_data."""
     result = seed_data()
     return JSONResponse(
         status_code=result["status_code"],

@@ -1,3 +1,5 @@
+"""CRUD endpointi za uređaje i dodelu rack-u."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -9,6 +11,7 @@ router = APIRouter()
 # Kreiranje novog uređaja
 @router.post("/devices/", response_model=schemas.Device)
 def create_device(device: schemas.DeviceCreate, db: Session = Depends(get_db)):
+    """Kreira novi uređaj nakon provere jedinstvenosti serijskog broja."""
     # Proveravamo da li serijski broj već postoji
     db_device = db.query(models.Device).filter(models.Device.serial_number == device.serial_number).first()
     if db_device:
@@ -24,6 +27,7 @@ def create_device(device: schemas.DeviceCreate, db: Session = Depends(get_db)):
 # Lista svih uređaja sa paginacijom i filtriranjem
 @router.get("/devices/", response_model=List[schemas.Device])
 def read_devices(skip: int = 0, limit: int = 100, name: str = None, db: Session = Depends(get_db)):
+    """Vraća paginiranu listu uređaja, opciono filtriranu po nazivu."""
     query = db.query(models.Device)
     if name:
         query = query.filter(models.Device.name.contains(name))  # Filtriranje po nazivu
@@ -33,6 +37,7 @@ def read_devices(skip: int = 0, limit: int = 100, name: str = None, db: Session 
 # Dohvatanje pojedinačnog uređaja
 @router.get("/devices/{device_id}", response_model=schemas.Device)
 def read_device(device_id: int, db: Session = Depends(get_db)):
+    """Vraća jedan uređaj po ID-u."""
     db_device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Uređaj nije pronađen")
@@ -41,6 +46,7 @@ def read_device(device_id: int, db: Session = Depends(get_db)):
 # Ažuriranje uređaja
 @router.put("/devices/{device_id}", response_model=schemas.Device)
 def update_device(device_id: int, device: schemas.DeviceCreate, db: Session = Depends(get_db)):
+    """Ažurira uređaj uz poštovanje kapaciteta rack-a."""
     db_device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Uređaj nije pronađen")
@@ -75,6 +81,7 @@ def update_device(device_id: int, device: schemas.DeviceCreate, db: Session = De
 # Brisanje uređaja
 @router.delete("/devices/{device_id}")
 def delete_device(device_id: int, db: Session = Depends(get_db)):
+    """Briše uređaj po ID-u."""
     db_device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Uređaj nije pronađen")
@@ -85,6 +92,7 @@ def delete_device(device_id: int, db: Session = Depends(get_db)):
 # Dodeljivanje uređaja rack-u
 @router.post("/devices/{device_id}/assign/{rack_id}")
 def assign_device_to_rack(device_id: int, rack_id: int, db: Session = Depends(get_db)):
+    """Dodeljuje uređaj rack-u ako kapacitet jedinica i snage to dozvoljava."""
     # Pronalazimo uređaj
     db_device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if db_device is None:
@@ -117,6 +125,7 @@ def assign_device_to_rack(device_id: int, rack_id: int, db: Session = Depends(ge
 # Uklanjanje uređaja sa rack-a
 @router.post("/devices/{device_id}/unassign")
 def unassign_device_from_rack(device_id: int, db: Session = Depends(get_db)):
+    """Uklanja dodelu uređaja sa rack-a."""
     db_device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Uređaj nije pronađen")

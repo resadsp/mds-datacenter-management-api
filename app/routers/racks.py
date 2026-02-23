@@ -1,3 +1,5 @@
+"""CRUD endpointi za rack-ove i operacije uz proveru kapaciteta."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -9,6 +11,7 @@ router = APIRouter()
 # Kreiranje novog rack-a
 @router.post("/racks/", response_model=schemas.Rack)
 def create_rack(rack: schemas.RackCreate, db: Session = Depends(get_db)):
+    """Kreira novi rack nakon provere jedinstvenosti serijskog broja."""
     # Proveravamo jedinstvenost serijskog broja
     db_rack = db.query(models.Rack).filter(models.Rack.serial_number == rack.serial_number).first()
     if db_rack:
@@ -23,6 +26,7 @@ def create_rack(rack: schemas.RackCreate, db: Session = Depends(get_db)):
 # Lista svih rack-ova sa paginacijom i filtriranjem
 @router.get("/racks/", response_model=List[schemas.Rack])
 def read_racks(skip: int = 0, limit: int = 100, name: str = None, db: Session = Depends(get_db)):
+    """Vraća paginiranu listu rack-ova, opciono filtriranu po nazivu."""
     query = db.query(models.Rack)
     if name:
         query = query.filter(models.Rack.name.contains(name))  # Filtriranje po nazivu
@@ -39,6 +43,7 @@ def read_racks(skip: int = 0, limit: int = 100, name: str = None, db: Session = 
 # Dohvatanje detalja rack-a sa listom uređaja
 @router.get("/racks/{rack_id}", response_model=schemas.RackWithDevices)
 def read_rack(rack_id: int, db: Session = Depends(get_db)):
+    """Vraća detalje rack-a zajedno sa trenutno dodeljenim uređajima."""
     db_rack = db.query(models.Rack).filter(models.Rack.id == rack_id).first()
     if db_rack is None:
         raise HTTPException(status_code=404, detail="Rack nije pronađen")
@@ -52,6 +57,7 @@ def read_rack(rack_id: int, db: Session = Depends(get_db)):
 # Ažuriranje rack-a
 @router.put("/racks/{rack_id}", response_model=schemas.Rack)
 def update_rack(rack_id: int, rack: schemas.RackCreate, db: Session = Depends(get_db)):
+    """Ažurira rack bez narušavanja trenutne zauzetosti i potrošnje."""
     db_rack = db.query(models.Rack).filter(models.Rack.id == rack_id).first()
     if db_rack is None:
         raise HTTPException(status_code=404, detail="Rack nije pronađen")
@@ -81,6 +87,7 @@ def update_rack(rack_id: int, rack: schemas.RackCreate, db: Session = Depends(ge
 # Brisanje rack-a
 @router.delete("/racks/{rack_id}")
 def delete_rack(rack_id: int, db: Session = Depends(get_db)):
+    """Briše prazan rack (rack bez dodeljenih uređaja)."""
     db_rack = db.query(models.Rack).filter(models.Rack.id == rack_id).first()
     if db_rack is None:
         raise HTTPException(status_code=404, detail="Rack nije pronađen")

@@ -1,3 +1,5 @@
+"""Endpointi za agregirane statistike data centra."""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -8,6 +10,7 @@ router = APIRouter()
 # Endpoint za dohvatanje statistika celog data centra
 @router.get("/stats/")
 def get_stats(db: Session = Depends(get_db)):
+    """Vraća globalne brojače i metrike iskorišćenosti data centra."""
     # Broj uređaja
     total_devices = db.query(models.Device).count()
 
