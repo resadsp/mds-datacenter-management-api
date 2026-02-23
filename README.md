@@ -20,13 +20,16 @@ Swagger: `http://localhost:8000/docs`
 Seed nije obavezan za pokretanje API-ja, ali je **preporučen** zbog demo podataka
 (baza `datacenter.db` je u `.gitignore` i može biti prazna).
 
-Opciono (preporučeno):
+Za komisiju se preporučuje da odmah nakon podizanja API-ja pokrene seed
+(`POST /api/v1/seed`) kako bi svi endpoint-i imali podatke za demonstraciju.
+
+Jednokratno (preporučeno):
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/seed
 ```
 
-Ako `curl` nije dostupan:
+Ako `curl` nije dostupan, seed može da se pokrene kroz Swagger UI:
 
 - otvoriti `http://localhost:8000/docs`
 - pokrenuti `POST /api/v1/seed` (**Try it out** → **Execute**)
@@ -140,6 +143,7 @@ curl -X POST http://localhost:8000/api/v1/seed
 ```
 
 > Seed je namenjen brzom punjenju test podacima za komisiju.
+> Ako je baza već seedovana, API seed endpoint vraća `409 Database already seeded`.
 
 ---
 
@@ -284,4 +288,4 @@ wsl --update
 ## 12) Verzija
 
 - API verzija: `1.0.0`
-- Datum finalne pripreme: 23.02.2026.
+- Datum finalne pripreme: 24.02.2026.
