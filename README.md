@@ -139,7 +139,7 @@ pytest -v tests/test_balancing.py
 
 ## 8) API rute
 
-## Devices
+### Devices
 
 - `POST /api/v1/devices/`
 - `GET /api/v1/devices/`
@@ -149,7 +149,7 @@ pytest -v tests/test_balancing.py
 - `POST /api/v1/devices/{device_id}/assign/{rack_id}`
 - `POST /api/v1/devices/{device_id}/unassign`
 
-## Racks
+### Racks
 
 - `POST /api/v1/racks/`
 - `GET /api/v1/racks/`
@@ -157,15 +157,15 @@ pytest -v tests/test_balancing.py
 - `PUT /api/v1/racks/{rack_id}`
 - `DELETE /api/v1/racks/{rack_id}`
 
-## Balancing
+### Balancing
 
 - `POST /api/v1/balance/`
 
-## Stats
+### Stats
 
 - `GET /api/v1/stats/`
 
-## Seed
+### Seed
 
 - `POST /api/v1/seed`
 
@@ -196,27 +196,19 @@ Output je **predlog rasporeda**.
 
 ---
 
-## 11) Brzi flow za komisiju (preporučeno)
+## 11) Brzi start (preporučeno)
 
-1. Klonirati repo  
-2. Pokrenuti:
-   ```bash
-   docker compose up --build
-   ```
-3. Seedovati podatke:
-   ```bash
-   python seed.py
-   ```
-   ili:
-   ```bash
-   curl -X POST http://localhost:8000/api/v1/seed
-   ```
-4. Otvoriti Swagger:
-   - `http://localhost:8000/docs`
-5. Pokrenuti test:
-   ```bash
-   pytest -q
-   ```
+```bash
+git clone https://github.com/resadsp/mds-datacenter-management-api.git
+cd mds-datacenter-management-api
+docker compose up --build
+python seed.py
+pytest -q
+```
+
+- Swagger: `http://localhost:8000/docs`
+- OpenAPI: `http://localhost:8000/openapi.json`
+- Health: `http://localhost:8000/health`
 
 ---
 
