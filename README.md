@@ -4,7 +4,7 @@ REST API aplikacija za upravljanje uređajima i rack-ovima u data centru, sa val
 
 ---
 
-## 0) Komisija (60 sekundi) — Docker first
+## 0) Brzi start (komisija) — Docker
 
 **Projekat je Dockerizovan i ovo je primarni način pokretanja za evaluaciju.**
 
@@ -12,6 +12,14 @@ REST API aplikacija za upravljanje uređajima i rack-ovima u data centru, sa val
 git clone https://github.com/resadsp/mds-datacenter-management-api.git
 cd mds-datacenter-management-api
 docker compose up -d --build
+```
+
+Seed nije obavezan za pokretanje API-ja, ali je **preporučen** zbog demo podataka
+(baza `datacenter.db` je u `.gitignore` i može biti prazna).
+
+Opciono (preporučeno):
+
+```bash
 curl -X POST http://localhost:8000/api/v1/seed
 ```
 
@@ -225,19 +233,7 @@ Output je **predlog rasporeda**.
 
 ---
 
-## 11) Brzi start (preporučeno)
-
-Za komisiju i najbrže pokretanje koristi sekciju **0) Komisija (60 sekundi) — Docker first**.
-
-Testovi (opciono, van Docker flow-a):
-
-```bash
-pytest -q
-```
-
----
-
-## 12) Troubleshooting
+## 11) Troubleshooting
 
 Ako `docker compose up` prijavi `port 8000 already allocated`:
 
@@ -282,7 +278,7 @@ wsl --update
 
 ---
 
-## 13) Verzija
+## 12) Verzija
 
 - API verzija: `1.0.0`
 - Datum finalne pripreme: 24.02.2026.
