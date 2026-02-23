@@ -4,6 +4,35 @@ REST API aplikacija za upravljanje uređajima i rack-ovima u data centru, sa val
 
 ---
 
+## 0) Komisija (60 sekundi) — Docker first
+
+**Projekat je Dockerizovan i ovo je primarni način pokretanja za evaluaciju.**
+
+```bash
+git clone https://github.com/resadsp/mds-datacenter-management-api.git
+cd mds-datacenter-management-api
+docker compose up -d --build
+curl -X POST http://localhost:8000/api/v1/seed
+```
+
+Ako `curl` nije dostupan:
+
+- otvoriti `http://localhost:8000/docs`
+- pokrenuti `POST /api/v1/seed` (**Try it out** → **Execute**)
+
+Provera da sve radi:
+
+- Swagger: `http://localhost:8000/docs`
+- Health: `http://localhost:8000/health`
+
+Gašenje:
+
+```bash
+docker compose down
+```
+
+---
+
 ## 1) Kratak opis
 
 Projekat implementira backend funkcionalnosti tražene zadatkom:
@@ -54,7 +83,7 @@ Projekat implementira backend funkcionalnosti tražene zadatkom:
 
 ---
 
-## 4) Pokretanje aplikacije (Docker — preporučeno)
+## 4) Pokretanje aplikacije (Docker — primarno za evaluaciju)
 
 ### Opcija A: Docker Compose
 
@@ -198,17 +227,13 @@ Output je **predlog rasporeda**.
 
 ## 11) Brzi start (preporučeno)
 
+Za komisiju i najbrže pokretanje koristi sekciju **0) Komisija (60 sekundi) — Docker first**.
+
+Testovi (opciono, van Docker flow-a):
+
 ```bash
-git clone https://github.com/resadsp/mds-datacenter-management-api.git
-cd mds-datacenter-management-api
-docker compose up --build
-python seed.py
 pytest -q
 ```
-
-- Swagger: `http://localhost:8000/docs`
-- OpenAPI: `http://localhost:8000/openapi.json`
-- Health: `http://localhost:8000/health`
 
 ---
 
@@ -218,6 +243,42 @@ Ako `docker compose up` prijavi `port 8000 already allocated`:
 
 - ugasiti proces/kontejner koji koristi 8000, ili
 - promeniti mapiranje porta u `docker-compose.yml` na npr. `8001:8000`, pa koristiti `http://localhost:8001/docs`.
+
+Ako na Windows-u dobiješ grešku:
+
+`open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified`
+
+to znači da Docker Desktop Linux engine nije pokrenut ili nije izabran pravi Docker context.
+
+Koraci:
+
+1. Pokreni Docker Desktop i sačekaj status **Engine running**.
+2. U Docker Desktop podešavanjima proveri da je uključeno **Use the WSL 2 based engine**.
+3. U terminalu proveri i prebaci context na Linux engine:
+
+  ```bash
+  docker context ls
+  docker context use desktop-linux
+  docker version
+  ```
+
+4. Ako i dalje ne radi, resetuj WSL i Docker Desktop:
+
+  ```powershell
+  wsl --shutdown
+  ```
+
+  zatvori i ponovo pokreni Docker Desktop, pa probaj opet:
+
+  ```bash
+  docker compose up --build
+  ```
+
+Ako Docker Desktop ne može da startuje engine, uradi update WSL-a:
+
+```powershell
+wsl --update
+```
 
 ---
 
