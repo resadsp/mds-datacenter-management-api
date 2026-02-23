@@ -14,6 +14,9 @@ cd mds-datacenter-management-api
 docker compose up -d --build
 ```
 
+API je dostupan na: `http://localhost:8000`
+Swagger: `http://localhost:8000/docs`
+
 Seed nije obavezan za pokretanje API-ja, ali je **preporučen** zbog demo podataka
 (baza `datacenter.db` je u `.gitignore` i može biti prazna).
 
