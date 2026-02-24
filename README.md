@@ -231,10 +231,15 @@ Detaljni request/response modeli su u Swagger dokumentaciji (`/docs`).
 
 ## 9) Kako se uređaj dodeljuje rack-u (primer)
 
-U ovom projektu dodela ide u **2 koraka**:
+Ako već postoje rack i uređaj, dodela se radi jednim pozivom:
 
-1. prvo se kreira uređaj (`POST /api/v1/devices/`)
-2. zatim se dodeli rack-u (`POST /api/v1/devices/{device_id}/assign/{rack_id}`)
+- `POST /api/v1/devices/{device_id}/assign/{rack_id}`
+
+Praktični tok (od prazne baze) je 3 koraka:
+
+1. kreiraj rack (`POST /api/v1/racks/`)
+2. kreiraj uređaj (`POST /api/v1/devices/`)
+3. dodeli uređaj rack-u (`POST /api/v1/devices/{device_id}/assign/{rack_id}`)
 
 Primer:
 
@@ -263,9 +268,6 @@ curl -X POST http://localhost:8000/api/v1/devices/ \
 
 # 3) Dodeli uređaj rack-u (zameni PLACEHOLDER vrednosti stvarnim ID-jevima)
 curl -X POST http://localhost:8000/api/v1/devices/{DEVICE_ID}/assign/{RACK_ID}
-
-# primer sa konkretnim vrednostima
-curl -X POST http://localhost:8000/api/v1/devices/3/assign/2
 ```
 
 Ako je uređaj već dodeljen ili rack nema dovoljno kapaciteta (`total_units` / `max_power`), API vraća `400`.
