@@ -270,9 +270,22 @@ curl -X POST http://localhost:8000/api/v1/devices/ \
 curl -X POST http://localhost:8000/api/v1/devices/{DEVICE_ID}/assign/{RACK_ID}
 ```
 
+Napomena: primeri iznad su pisani za `bash` (Linux/macOS). Na Windows CMD/PowerShell sintaksa za varijable i navodnike može da se razlikuje.
+
+Windows (PowerShell) primer sa jedinstvenim serijskim brojevima:
+
+```powershell
+$R = Get-Date -UFormat %s
+
+curl.exe -X POST http://localhost:8000/api/v1/racks/ -H "Content-Type: application/json" -d "{\"name\":\"Rack A1\",\"description\":\"Glavni rack\",\"serial_number\":\"RACK-A1-$R\",\"total_units\":42,\"max_power\":10000}"
+
+curl.exe -X POST http://localhost:8000/api/v1/devices/ -H "Content-Type: application/json" -d "{\"name\":\"Server Dell R740\",\"description\":\"DB server\",\"serial_number\":\"DEV-R740-$R\",\"units_occupied\":2,\"power_consumption\":450}"
+```
+
 Ako je uređaj već dodeljen ili rack nema dovoljno kapaciteta (`total_units` / `max_power`), API vraća `400`.
 
 Napomena: `DEVICE_ID` i `RACK_ID` uzimaš iz JSON odgovora prethodnih `POST /api/v1/devices/` i `POST /api/v1/racks/` poziva (polje `id`).
+Napomena: `serial_number` za `Device` i `Rack` mora biti jedinstven; za duplikat API vraća `400`.
 
 ---
 
