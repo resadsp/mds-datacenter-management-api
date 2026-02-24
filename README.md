@@ -64,6 +64,18 @@ Projekat implementira backend funkcionalnosti tražene zadatkom:
 - Dockerized deployment za lako testiranje.
 
 > Napomena: auth/autorizacija nije implementirana jer nije deo zahteva.
+> Napomena: UI nije obavezan po zadatku; aplikacija je namenjena korišćenju preko REST API poziva.
+
+---
+
+## 1.1) Usklađenost sa zadatkom (sažeto)
+
+- Implementirani su entiteti `Device` i `Rack` sa traženim poljima i validacijama.
+- Omogućene su CRUD operacije nad oba entiteta.
+- Dodela uređaja rack-u je implementirana preko posebnog endpoint-a, uz proveru `total_units` i `max_power`.
+- Pri dohvatanju rack-a vraćaju se i trenutna potrošnja (`current_power`) i zauzeće (`current_units`).
+- Implementiran je endpoint za predlog balansiranog rasporeda (`/api/v1/balance/`) uz pretpostavku praznih rack-ova (predlog rasporeda).
+- Unit testovi su pokriveni za funkcionalnost balansiranja (`tests/test_balancing.py`).
 
 ---
 
@@ -217,7 +229,52 @@ Detaljni request/response modeli su u Swagger dokumentaciji (`/docs`).
 
 ---
 
-## 9) Balancing logika (sažeto)
+## 9) Kako se uređaj dodeljuje rack-u (primer)
+
+U ovom projektu dodela ide u **2 koraka**:
+
+1. prvo se kreira uređaj (`POST /api/v1/devices/`)
+2. zatim se dodeli rack-u (`POST /api/v1/devices/{device_id}/assign/{rack_id}`)
+
+Primer:
+
+```bash
+# 1) Kreiraj rack
+curl -X POST http://localhost:8000/api/v1/racks/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Rack A1",
+    "description": "Glavni rack",
+    "serial_number": "RACK-A1-001",
+    "total_units": 42,
+    "max_power": 10000
+  }'
+
+# 2) Kreiraj uređaj
+curl -X POST http://localhost:8000/api/v1/devices/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Server Dell R740",
+    "description": "DB server",
+    "serial_number": "DEV-R740-001",
+    "units_occupied": 2,
+    "power_consumption": 450
+  }'
+
+# 3) Dodeli uređaj rack-u (zameni PLACEHOLDER vrednosti stvarnim ID-jevima)
+curl -X POST http://localhost:8000/api/v1/devices/{DEVICE_ID}/assign/{RACK_ID}
+
+# primer sa konkretnim vrednostima
+curl -X POST http://localhost:8000/api/v1/devices/3/assign/2
+```
+
+Ako je uređaj već dodeljen ili rack nema dovoljno kapaciteta (`total_units` / `max_power`), API vraća `400`.
+
+Napomena: `DEVICE_ID` i `RACK_ID` uzimaš iz JSON odgovora prethodnih `POST /api/v1/devices/` i `POST /api/v1/racks/` poziva (polje `id`).
+
+---
+
+## 10) Balancing logika (sažeto)
 
 Endpoint prima listu uređaja i rack-ova i vraća:
 
@@ -230,17 +287,21 @@ Pri predlogu se vodi računa o:
 - `max_power` kapacitetu rack-a
 - cilju što ujednačenijeg procentualnog opterećenja snage rack-ova
 
+Napomena: balansiranje ne uzima u obzir trenutni raspored u bazi i ne određuje tačne U pozicije uređaja, već daje predlog rasporeda po rack-ovima na nivou kapaciteta.
+
 Output je **predlog rasporeda**.
 
 ---
 
-## 10) Screenshot dashboard-a
+## 11) Screenshot dashboard-a
+
+Dashboard je dodatna pomoćna vizualizacija; primarni način upotrebe i evaluacije je kroz REST API (`/docs`, `curl`, Postman).
 
 ![Početna strana](docs/images/pozadina_projekta.png)
 
 ---
 
-## 11) Troubleshooting
+## 12) Troubleshooting
 
 Ako `docker compose up` prijavi `port 8000 already allocated`:
 
@@ -285,7 +346,7 @@ wsl --update
 
 ---
 
-## 12) Verzija
+## 13) Verzija
 
 - API verzija: `1.0.0`
 - Datum finalne pripreme: 24.02.2026.
