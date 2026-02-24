@@ -248,9 +248,9 @@ Primer:
 curl -X POST http://localhost:8000/api/v1/racks/ \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Rack A1",
+    "name": "Rack A3",
     "description": "Glavni rack",
-    "serial_number": "RACK-A1-001",
+    "serial_number": "RACK-A3-003",
     "total_units": 42,
     "max_power": 10000
   }'
