@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  test-lint-security-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff bandit
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Security scan
+        run: bandit -r app -q
+
+      - name: Build image
+        run: docker build -t mds-datacenter-api:ci .
+
+      - name: Smoke test container
+        run: |
+          docker run -d --name mds-smoke -p 18000:8000 mds-datacenter-api:ci
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:18000/health; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:18000/health
+          docker logs mds-smoke | tail -n 40
+          docker rm -f mds-smoke

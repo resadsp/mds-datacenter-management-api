@@ -1,7 +1,26 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: mds-datacenter-redis
+    restart: unless-stopped
+
   api:
     build: .
     container_name: mds-datacenter-api
+    depends_on:
+      - redis
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///./data/datacenter.db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-120}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      MAX_REQUEST_SIZE_BYTES: ${MAX_REQUEST_SIZE_BYTES:-2097152}
+    volumes:
+      - mds_data:/app/data
     ports:
       - "8000:8000"
     restart: unless-stopped
+
+volumes:
+  mds_data:

@@ -1,22 +1,28 @@
 """Seed endpoint i pomoćna funkcija za unos demo/test podataka."""
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app import models
+from app import models, schemas
+from app.audit import log_action
+from app.auth import bootstrap_default_users, require_roles
+from app.database import get_db
+from app.routers.stats import invalidate_stats_cache
 
 router = APIRouter(prefix="/seed", tags=["Seed"])
-
 
 def seed_data():
     """Popunjava bazu rack-ovima, uređajima i početnim dodelama (jednokratno)."""
     db = SessionLocal()
     try:
+        bootstrap_default_users()
+
         if db.query(models.Rack).first():
             return {
                 "ok": False,
                 "status_code": status.HTTP_409_CONFLICT,
-                "message": "Database already seeded.",
+                "message": "Baza je već seedovana.",
             }
 
         # ----------------------
@@ -76,7 +82,7 @@ def seed_data():
         return {
             "ok": True,
             "status_code": status.HTTP_200_OK,
-            "message": "Database seeded successfully.",
+            "message": "Baza je uspešno seedovana.",
         }
     except Exception as e:
         db.rollback()
@@ -89,10 +95,36 @@ def seed_data():
         db.close()
 
 
-@router.post("", summary="Seed baze kompletnim test podacima")
-def run_seed():
+@router.post(
+    "",
+    summary="Seed baze kompletnim test podacima",
+    response_model=schemas.MessageResponse,
+    responses={
+        401: {"model": schemas.ErrorResponse},
+        403: {"model": schemas.ErrorResponse},
+        409: {"model": schemas.ErrorResponse},
+    },
+)
+def run_seed(
+    current_user: models.User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
     """HTTP endpoint omotač oko pomoćne funkcije seed_data."""
     result = seed_data()
+
+    log_action(
+        db,
+        actor_username=current_user.username,
+        action="system.seed",
+        entity_type="system",
+        before_data=None,
+        after_data={"message": result.get("message"), "status_code": result.get("status_code")},
+    )
+    db.commit()
+
+    if result.get("ok"):
+        invalidate_stats_cache()
+
     return JSONResponse(
         status_code=result["status_code"],
         content={"message": result["message"]},
