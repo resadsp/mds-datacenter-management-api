@@ -1,4 +1,3 @@
-import pytest
 from app.balancing import balance_devices
 
 # Test jednostavnog balansiranja - svi uređaji mogu da se smeste
