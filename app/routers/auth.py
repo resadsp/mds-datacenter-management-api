@@ -130,7 +130,8 @@ async def login(
             resolved_username = parsed.get("username", [None])[0]
             resolved_password = parsed.get("password", [None])[0]
         except Exception:
-            pass
+            resolved_username = None
+            resolved_password = None
 
     if not resolved_username or not resolved_password:
         try:
@@ -145,7 +146,8 @@ async def login(
                 resolved_username = resolved_username or (parsed.get("username", [None])[0])
                 resolved_password = resolved_password or (parsed.get("password", [None])[0])
         except Exception:
-            pass
+            resolved_username = resolved_username or None
+            resolved_password = resolved_password or None
 
     if not resolved_username or not resolved_password:
         raise HTTPException(status_code=400, detail="Username and password are required")

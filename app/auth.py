@@ -147,11 +147,11 @@ def bootstrap_default_users() -> None:
     db = SessionLocal()
     try:
         defaults = [
-            {"username": "admin1", "password": "admin123", "role": "admin"},
-            {"username": "admin2", "password": "admin123", "role": "admin"},
-            {"username": "admin3", "password": "admin123", "role": "admin"},
-            {"username": "operator", "password": "operator123", "role": "operator"},
-            {"username": "viewer", "password": "viewer123", "role": "viewer"},
+            {"username": "admin1", "password": "admin123", "role": "admin"},  # nosec B105
+            {"username": "admin2", "password": "admin123", "role": "admin"},  # nosec B105
+            {"username": "admin3", "password": "admin123", "role": "admin"},  # nosec B105
+            {"username": "operator", "password": "operator123", "role": "operator"},  # nosec B105
+            {"username": "viewer", "password": "viewer123", "role": "viewer"},  # nosec B105
         ]
         for user_data in defaults:
             existing = (
