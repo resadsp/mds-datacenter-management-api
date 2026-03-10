@@ -25,13 +25,13 @@ Pregled sekcija za evaluaciju:
 
 ### 0.1) Komisija — glavni demo flow
 
-Dashboard je primarni kanal demonstracije. Swagger koristiš posle, samo za tehničke potvrde graničnih slučajeva.
+Dashboard je primarni kanal demonstracije. Swagger se koristi naknadno, samo za tehničke potvrde graničnih slučajeva.
 
 1. Prijava kao `admin1` i pokretanje seed-a (dugme `Seed bazu`; alternativno Swagger).
   - Očekivano: `200` ili `409` ako je baza već seedovana.
 2. Brzi pregled stanja sistema: stats, lista uređaja, lista rack-ova.
   - Očekivano: podaci su učitani i bez grešaka.
-3. CRUD primer: dodaj jedan rack i jedan uređaj.
+3. CRUD primer: kreirati jedan rack i jedan uređaj.
   - Očekivano: novi zapisi su vidljivi u listama.
 4. `assign` pa `unassign` za uređaj.
   - Očekivano: status uređaja i opterećenje rack-a se menjaju ispravno.
@@ -46,17 +46,17 @@ Dashboard je primarni kanal demonstracije. Swagger koristiš posle, samo za tehn
 
 ### 0.2) Komisija — detaljni checklist (po potrebi)
 
-Ovu sekciju koristiš kao rezervu kada komisija traži dublju proveru.
+Ova sekcija služi kao rezerva kada komisija traži dublju proveru.
 
 1. **Dostupnost servisa**
-  - Pokreni `docker compose up -d --build`.
-  - Proveri `/dashboard`, `/health`, `/health/live`, `/health/ready`, `/metrics`.
+  - Pokrenuti `docker compose up -d --build`.
+  - Proveriti `/dashboard`, `/health`, `/health/live`, `/health/ready`, `/metrics`.
 
 2. **Login i role kontekst**
   - Prijava kao `admin1/admin123` i potvrda da su admin kontrole vidljive.
 
 3. **Seed kroz UI**
-  - Klik `Seed bazu`; očekivano `200` ili `409`.
+  - Pokretanje akcije `Seed bazu`; očekivano `200` ili `409`.
 
 4. **Stats i pregled sistema**
   - Provera kartica i osvežavanje podataka.
@@ -97,7 +97,7 @@ Ovu sekciju koristiš kao rezervu kada komisija traži dublju proveru.
   - `pytest -q`.
   - Po potrebi i `tests/test_api_integration.py`.
 
-### 0.3) Šta komisija vidi u ovom demou
+### 0.3) Ključni kriterijumi evaluacije
 
 - **Auth/session tok:** `login` → `refresh` → `logout/logout-all`.
 - **RBAC pravila:** jasna razlika između `viewer`, `operator` i `admin`.
@@ -124,8 +124,8 @@ Ovu sekciju koristiš kao rezervu kada komisija traži dublju proveru.
 
 ### 0.6) Brze napomene za demo
 
-- Ako seed vrati `409`, to znači da su podaci već prisutni; nastavi demo bez reseta.
-- Za čist reset koristi `docker compose down -v`, pa ponovo `docker compose up --build`.
+- Ako seed vrati `409`, to znači da su podaci već prisutni; demonstracija se nastavlja bez reseta.
+- Za čist reset koristi se `docker compose down -v`, pa ponovo `docker compose up --build`.
 - Podrazumevani korisnici: `admin1/admin123`, `admin2/admin123`, `admin3/admin123`, `operator/operator123`, `viewer/viewer123`.
 - Seed je zaštićen admin rolom i može kroz dugme `Seed bazu` ili kroz Swagger.
 - SQLite se čuva u Docker volume-u `mds_data`; briše se samo sa `down -v`.
@@ -200,6 +200,11 @@ Uz backend zahteve, dashboard je UX/UI dorađen da demonstracija bude jasnija i 
 - `STATS_CACHE_TTL_SECONDS` (default: `30`)
 - `ASSIGN_IDEMPOTENCY_TTL_SECONDS` (default: `600`)
 
+Napomena:
+
+- `.env` fajl nije obavezan i nije verzionisan u repozitorijumu.
+- Konfiguracija se može zadati preko sistemskih env varijabli ili lokalnog `.env` fajla.
+
 ---
 
 ## 3) Struktura projekta (bitno za evaluaciju)
@@ -222,6 +227,10 @@ Uz backend zahteve, dashboard je UX/UI dorađen da demonstracija bude jasnija i 
 - `tests/test_balancing.py` — testovi balansiranja
 - `tests/test_api_integration.py` — integracioni testovi API tokova
 - `seed.py` (root) — **CLI seed skripta** (`python seed.py`)
+- `alembic/` — migracije baze
+- `alembic.ini` — Alembic konfiguracija
+- `.github/workflows/ci.yml` — CI pipeline (lint/test/security/build/smoke)
+- `static/` — statički resursi dashboard-a
 - `Dockerfile`
 - `docker-compose.yml`
 
@@ -483,7 +492,7 @@ Primer pokretanja:
 alembic upgrade head
 ```
 
-Ako koristiš PostgreSQL, postavi `DATABASE_URL` pre migracije (npr. kroz `.env` ili shell).
+Ako se koristi PostgreSQL, potrebno je postaviti `DATABASE_URL` pre migracije (npr. kroz `.env` ili shell).
 
 ---
 
@@ -564,7 +573,7 @@ curl.exe -X POST http://localhost:8000/api/v1/devices/ -H "Content-Type: applica
 
 Ako je uređaj već dodeljen ili rack nema dovoljno kapaciteta (`total_units` / `max_power`), API vraća `400`.
 
-Napomena: `DEVICE_ID` i `RACK_ID` uzimaš iz JSON odgovora prethodnih `POST /api/v1/devices/` i `POST /api/v1/racks/` poziva (polje `id`).
+Napomena: `DEVICE_ID` i `RACK_ID` se uzimaju iz JSON odgovora prethodnih `POST /api/v1/devices/` i `POST /api/v1/racks/` poziva (polje `id`).
 Napomena: `serial_number` za `Device` i `Rack` mora biti jedinstven; za duplikat API vraća `400`.
 
 ---
@@ -611,9 +620,9 @@ to znači da Docker Desktop Linux engine nije pokrenut ili nije izabran pravi Do
 
 Koraci:
 
-1. Pokreni Docker Desktop i sačekaj status **Engine running**.
-2. U Docker Desktop podešavanjima proveri da je uključeno **Use the WSL 2 based engine**.
-3. U terminalu proveri i prebaci context na Linux engine:
+1. Pokrenuti Docker Desktop i sačekati status **Engine running**.
+2. U Docker Desktop podešavanjima proveriti da je uključeno **Use the WSL 2 based engine**.
+3. U terminalu proveriti i prebaciti context na Linux engine:
 
   ```bash
   docker context ls
@@ -621,19 +630,19 @@ Koraci:
   docker version
   ```
 
-4. Ako i dalje ne radi, resetuj WSL i Docker Desktop:
+4. Ako i dalje ne radi, resetovati WSL i Docker Desktop:
 
   ```powershell
   wsl --shutdown
   ```
 
-  zatvori i ponovo pokreni Docker Desktop, pa probaj opet:
+  zatvoriti i ponovo pokrenuti Docker Desktop, pa pokušati ponovo:
 
   ```bash
   docker compose up --build
   ```
 
-Ako Docker Desktop ne može da startuje engine, uradi update WSL-a:
+Ako Docker Desktop ne može da startuje engine, uraditi update WSL-a:
 
 ```powershell
 wsl --update
