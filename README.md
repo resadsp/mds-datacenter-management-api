@@ -17,11 +17,11 @@ docker compose up -d --build
 API je dostupan na: `http://localhost:8000`
 Swagger: `http://localhost:8000/docs`
 
-Kako koristiti sekcije za komisiju:
+Pregled sekcija za evaluaciju:
 
-- `0.1` = glavni redosled demonstracije (ono što standardno prolaziš uživo).
-- `0.2` = detaljni checklist za dodatna pitanja komisije.
-- `0.5` = kratki plan kada imaš oko 7 minuta.
+- `0.1` — glavni redosled demonstracije (standardni tok uživo).
+- `0.2` — detaljni checklist za dodatna pitanja komisije.
+- `0.5` — kratki plan za demonstraciju od približno 7 minuta.
 
 ### 0.1) Komisija — glavni demo flow
 
