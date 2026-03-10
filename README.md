@@ -17,167 +17,118 @@ docker compose up -d --build
 API je dostupan na: `http://localhost:8000`
 Swagger: `http://localhost:8000/docs`
 
-### 0.1) Komisija demo flow (12 koraka)
+Kako koristiti sekcije za komisiju:
 
-1. Uloguj se kao `admin1` i pokreni `POST /api/v1/seed` (dugme `Seed bazu` ili Swagger).
-  - Očekivano: `200` i poruka `Baza je uspešno seedovana.` (ili `409` ako je već seedovano).
-2. Prikaži `GET /api/v1/stats/`, `GET /api/v1/devices/` i `GET /api/v1/racks/`.
-  - Očekivano: `200` i popunjeni podaci.
-3. Kao `admin1` dodaj novi rack i novi uređaj.
-  - Očekivano: uspešan unos i vidljivost u listama.
-4. Dodeli novi uređaj u rack, pa ga zatim ukloni iz rack-a (`assign`/`unassign`).
-  - Očekivano: status i opterećenje rack-a se ažuriraju bez greške.
-5. Pokreni balansiranje (`Pokreni balansiranje`) i po potrebi primeni predlog.
-  - Očekivano: predlog dodela bez kršenja `total_units` i `max_power`.
-6. Odjavi se i uloguj kao `admin2`, pa izvrši izmenu nad postojećim uređajem ili rack-om.
-  - Očekivano: izmena uspešna i audit beleži `actor_username=admin2`.
-7. Odjavi se i uloguj kao `admin3`, pa uradi drugu izmenu (npr. opis ili kapacitet).
-  - Očekivano: izmena uspešna i audit beleži `actor_username=admin3`.
-8. U `Audit Logovi` pokaži hronologiju akcija za `admin1`, `admin2`, `admin3`.
-  - Očekivano: jasna razlika ko je izvršio koju akciju (`actor_username`, `action`, `entity_type`, `entity_id`, `Audit ID`).
-9. Test paralelne izmene istog entiteta (2 browsera/sesije):
-  - Otvori dva različita browser-a (ili regular + incognito), uloguj npr. `admin1` i `admin2`, učitaj isti uređaj/rack.
-  - Pošalji update sa istim početnim `version` iz obe sesije gotovo istovremeno.
-  - Očekivano: jedan update prolazi (`200`), drugi dobija `409` (optimistic locking konflikt verzije).
-10. Uloguj se kao `viewer` i pokaži da nema pristup operativnim akcijama (RBAC).
-  - Očekivano: viewer ne vidi operativna dugmad i dobija `403` na zabranjene akcije.
-11. Uloguj se kao `operator` i pokaži da ima operativne akcije, ali ne i admin-only deo.
-  - Očekivano: operator može CRUD/assign/balance, ali nema admin kontrole.
-12. Kao admin testiraj odjavu kroz modal (`Odjavi se sa ovog uređaja` i `Odjavi se sa svih uređaja`).
-  - Očekivano: obe putanje rade ispravno i sesije se ponašaju očekivano.
+- `0.1` = glavni redosled demonstracije (ono što standardno prolaziš uživo).
+- `0.2` = detaljni checklist za dodatna pitanja komisije.
+- `0.5` = kratki plan kada imaš oko 7 minuta.
 
-### 0.2) Komisija detaljni checklist (sve funkcionalnosti)
+### 0.1) Komisija — glavni demo flow
 
-Preporuka: glavni demo radi kroz dashboard (`/dashboard`), a Swagger (`/docs`) koristi samo za tehničke provere koje UI ne izlaže direktno.
+Dashboard je primarni kanal demonstracije. Swagger koristiš posle, samo za tehničke potvrde graničnih slučajeva.
 
-1. **Pokretanje i dostupnost servisa**
+1. Prijava kao `admin1` i pokretanje seed-a (dugme `Seed bazu`; alternativno Swagger).
+  - Očekivano: `200` ili `409` ako je baza već seedovana.
+2. Brzi pregled stanja sistema: stats, lista uređaja, lista rack-ova.
+  - Očekivano: podaci su učitani i bez grešaka.
+3. CRUD primer: dodaj jedan rack i jedan uređaj.
+  - Očekivano: novi zapisi su vidljivi u listama.
+4. `assign` pa `unassign` za uređaj.
+  - Očekivano: status uređaja i opterećenje rack-a se menjaju ispravno.
+5. Pokretanje balansiranja i pregled predloga.
+  - Očekivano: nema kršenja `total_units` i `max_power`.
+6. RBAC dokaz: prijava kao `viewer`, zatim kao `operator`.
+  - Očekivano: `viewer` nema operativne akcije; `operator` ima operativne, bez admin-only dela.
+7. Tok sesije: odjava sa trenutnog uređaja i odjava sa svih uređaja.
+  - Očekivano: obe putanje rade i sesije se ponašaju očekivano.
+8. Audit dokaz odgovornosti.
+  - Očekivano: jasno se vide `actor_username`, `action`, `entity_type`, `entity_id` i `Audit ID`.
+
+### 0.2) Komisija — detaljni checklist (po potrebi)
+
+Ovu sekciju koristiš kao rezervu kada komisija traži dublju proveru.
+
+1. **Dostupnost servisa**
   - Pokreni `docker compose up -d --build`.
-  - Otvori `/dashboard`, `/health`, `/health/live`, `/health/ready`, `/metrics`.
+  - Proveri `/dashboard`, `/health`, `/health/live`, `/health/ready`, `/metrics`.
 
 2. **Login i role kontekst**
-  - U dashboard login formi uloguj se kao `admin1/admin123`.
-  - Potvrdi da vidiš admin deo (`Audit Logovi`, admin kontrole).
+  - Prijava kao `admin1/admin123` i potvrda da su admin kontrole vidljive.
 
 3. **Seed kroz UI**
-  - Klikni `Seed bazu`.
-  - Očekivano: `200` poruka uspeha ili `409` ako je već seedovano (validan fallback).
+  - Klik `Seed bazu`; očekivano `200` ili `409`.
 
-4. **Stats i osnovni pregled sistema**
-  - Proveri stat kartice (broj uređaja/rack-ova, snaga, iskorišćenost).
-  - Osveži podatke i potvrdi da se dashboard puni bez greške.
+4. **Stats i pregled sistema**
+  - Provera kartica i osvežavanje podataka.
 
 5. **Devices CRUD + validacije**
-  - Dodaj novi uređaj.
-  - Probaj dupli `serial_number` i potvrdi grešku (`400`).
-  - Izmeni uređaj i potvrdi uspeh.
+  - Kreiranje, izmena, test duplog `serial_number` (`400`).
 
 6. **Racks CRUD + validacije**
-  - Dodaj novi rack.
-  - Probaj dupli `serial_number` i potvrdi grešku (`400`).
-  - Izmeni rack i potvrdi uspeh.
+  - Kreiranje, izmena, test duplog `serial_number` (`400`).
 
 7. **Assign/unassign + kapacitet**
-  - Dodeli uređaj rack-u (validan slučaj).
-  - Probaj dodelu koja prelazi `total_units` ili `max_power` i potvrdi odbijanje (`400`).
-  - Ukloni dodelu (`unassign`) i potvrdi povratak uređaja u slobodan status.
+  - Validna dodela, zatim odbijanje kad se pređe `total_units` ili `max_power` (`400`), pa `unassign`.
 
-8. **Soft delete + restore (UI)**
-  - Arhiviraj uređaj i rack.
-  - Uključi filter za arhivirane i potvrdi da se vide.
-  - Vrati arhivirane entitete (`restore`) i potvrdi aktivan status.
+8. **Soft delete + restore**
+  - Arhiviranje, prikaz arhiviranih i vraćanje entiteta.
 
-9. **Balancing (UI)**
-  - Pokreni balansiranje.
-  - Pregledaj predlog i po potrebi primeni ga.
-  - Potvrdi da predlog ne krši kapacitete rack-ova.
+9. **Balancing**
+  - Pokretanje, pregled i (po potrebi) primena predloga.
 
-10. **RBAC dokaz (viewer/operator/admin)**
-  - Odjavi se, prijavi kao `viewer` i potvrdi da su operativna dugmad skrivena/neaktivna.
-  - Potvrdi da viewer nema pristup operativnim akcijama (403 na zabranjene akcije).
-  - Prijavi se kao `operator` i potvrdi operativne akcije bez admin-only dela.
+10. **RBAC provera**
+  - `viewer`: bez operativnih akcija / `403` na zabranjene rute.
+  - `operator`: operativne akcije bez admin-only dela.
 
-11. **Logout modal i session tok (UI)**
-  - Klikni `Odjava` i potvrdi tri dugmeta u modalu (`Otkaži`, `Odjavi se sa ovog uređaja`, `Odjavi se sa svih uređaja`).
-  - Testiraj obe odjave i potvrdi očekivano ponašanje sesije.
+11. **Logout modal i session tok**
+  - Provera oba dugmeta odjave i očekivanog ponašanja sesije.
 
-12. **Audit dokaz odgovornosti (UI)**
-  - Otvori `Audit Logovi` kao admin.
-  - Potvrdi da se vide `actor_username`, akcija i entitet (`entity_type`, `entity_id`).
-  - Prikaži da se jasno razlikuju `Audit ID` i `entity_id`.
+12. **Audit logovi**
+  - Provera `actor_username`, `action`, `entity_type`, `entity_id`, `Audit ID`.
 
-13. **Swagger-only tehničke provere (najsitniji detalji)**
-  - `POST /api/v1/auth/refresh`: potvrda rotacije refresh tokena.
-  - `POST /api/v1/auth/logout-all`: potvrda opoziva svih sesija korisnika.
-  - `POST /api/v1/devices/{id}/assign/{rack_id}` sa `Idempotency-Key`: isti zahtev ne pravi dupli efekat.
-  - Paralelni update istog uređaja sa istim `version`: očekivano `200` + `409` (optimistic locking).
-  - `POST /api/v1/auth/tokens/cleanup` i `POST /api/v1/auth/users` (admin-only tehničke rute).
+13. **Swagger tehničke provere (posle dashboard dela)**
+  - `POST /api/v1/auth/refresh`.
+  - `POST /api/v1/auth/logout-all`.
+  - `POST /api/v1/devices/{id}/assign/{rack_id}` sa `Idempotency-Key`.
+  - Paralelni update istog uređaja sa istim `version` (`200 + 409`).
+  - `POST /api/v1/auth/tokens/cleanup` i `POST /api/v1/auth/users` (admin-only).
 
 14. **Automatska verifikacija**
-  - Pokreni `pytest -q`.
-  - Za konkurentnost i edge-case tokove proveri posebno `tests/test_api_integration.py`.
+  - `pytest -q`.
+  - Po potrebi i `tests/test_api_integration.py`.
 
-### 0.3) Dokazna mapa (šta tačno dokazujete komisiji)
+### 0.3) Šta komisija vidi u ovom demou
 
-- **Auth lifecycle:** `login` → `refresh` → `logout/logout-all`.
-- **RBAC:** `viewer` read-only, `operator/admin` operativne akcije.
-- **Integritet domena:** kapacitet (`total_units`, `max_power`) pri assign/update.
+- **Auth/session tok:** `login` → `refresh` → `logout/logout-all`.
+- **RBAC pravila:** jasna razlika između `viewer`, `operator` i `admin`.
+- **Integritet domena:** kapaciteti (`total_units`, `max_power`) se poštuju pri dodeli.
 - **Konkurentnost:** optimistic locking preko `version` (`409` na stale update).
-- **Otpornost na retry:** `Idempotency-Key` na assign.
-- **Sledljivost:** audit log ko/šta/kada/nad čim.
+- **Otpornost na retry:** `Idempotency-Key` sprečava duple efekte.
+- **Sledljivost:** audit log beleži ko je uradio šta i nad čim.
 - **Operativna spremnost:** `/health`, `/health/live`, `/health/ready`, `/metrics`.
 
-### 0.4) Dashboard-first, Swagger-second (preporuka za odbranu)
+### 0.4) Redosled demonstracije
 
-- **Dashboard-first:** koristi dashboard za glavni narativ i većinu funkcionalnosti (najjasnije za komisiju).
-- **Swagger-second:** koristi Swagger samo za tehničke edge-case provere koje nisu praktične kroz UI.
-- **Bez `curl` obaveze:** `curl` ostaje opcioni alat; nije potreban za standardnu komisijsku demonstraciju.
+- Prvo dashboard (`/dashboard`) za kompletan tok rada.
+- Posle Swagger (`/docs`) samo za tehničke detalje koji nisu praktični kroz UI.
 
-Fallback (ako seed vrati `409`):
+### 0.5) Kratki demo plan (7 minuta)
 
-- Poruka `Baza je već seedovana.` je očekivana ako podaci već postoje.
-- U demou samo nastavi na korak 2 (stats/devices/racks), bez ponovnog seed-a.
-- Ako želiš čist reset, pokreni `docker compose down -v` pa `docker compose up --build` i zatim seed ponovo.
+1. Start: `docker compose up -d --build` + provera `/health`.
+2. Login/RBAC: `admin1` pa `viewer` (pokazati ograničenja).
+3. Osnovni tok: kreiranje rack-a i uređaja, `assign` + `unassign`.
+4. Pouzdanost: `soft delete/restore` + optimistic locking (`200 + 409`).
+5. Sesije: obe opcije odjave iz modala.
+6. Audit: prikaz `actor_username`, `action`, `entity_id`, `Audit ID`.
+7. Swagger završna tehnička potvrda: `racks`, `refresh`, `logout-all`.
 
-Podrazumevani korisnici (za demo):
+### 0.6) Brze napomene za demo
 
-- `admin1` / `admin123`
-- `admin2` / `admin123`
-- `admin3` / `admin123`
-- `operator` / `operator123`
-- `viewer` / `viewer123`
-
-Seed nije obavezan za pokretanje API-ja, ali je **preporučen** zbog demo podataka
-(baza `datacenter.db` je u `.gitignore` i može biti prazna).
-
-Za komisiju se preporučuje da odmah nakon podizanja API-ja pokrene seed
-(`POST /api/v1/seed`) kako bi svi endpoint-i imali podatke za demonstraciju.
-
-Seed endpoint je zaštićen (admin rola).
-Za dashboard-first demo koristi dugme `Seed bazu`, a za API demonstraciju koristi Swagger:
-
-- otvoriti `http://localhost:8000/docs`
-- pokrenuti `POST /api/v1/seed` (**Try it out** → **Execute**)
-
-Detaljni primeri za seed i API tokove su niže u sekcijama `5) Seed podaci` i `9) API rute`.
-
-Provera da sve radi:
-
-- Swagger: `http://localhost:8000/docs`
-- Health: `http://localhost:8000/health`
-- Liveness: `http://localhost:8000/health/live`
-- Readiness: `http://localhost:8000/health/ready`
-- Metrics (Prometheus): `http://localhost:8000/metrics`
-
-Gašenje:
-
-```bash
-docker compose down
-```
-
-Napomena za bazu u Docker režimu:
-
-- SQLite baza se čuva na Docker volume-u (`mds_data`) i ostaje sačuvana nakon `docker compose down` i ponovnog `up`.
-- Baza se briše samo ako eksplicitno ukloniš volume, npr. `docker compose down -v`.
+- Ako seed vrati `409`, to znači da su podaci već prisutni; nastavi demo bez reseta.
+- Za čist reset koristi `docker compose down -v`, pa ponovo `docker compose up --build`.
+- Podrazumevani korisnici: `admin1/admin123`, `admin2/admin123`, `admin3/admin123`, `operator/operator123`, `viewer/viewer123`.
+- Seed je zaštićen admin rolom i može kroz dugme `Seed bazu` ili kroz Swagger.
+- SQLite se čuva u Docker volume-u `mds_data`; briše se samo sa `down -v`.
 
 ---
 
@@ -198,7 +149,7 @@ Uz backend zahteve, dashboard je UX/UI dorađen da demonstracija bude jasnija i 
 - Predlog rasporeda uređaja po rack-ovima (`/api/v1/balance/`) sa ciljem ujednačenije procentualne iskorišćenosti snage rack-ova.
   - Balansiranje mogu da pokrenu samo role `operator` i `admin`.
 - Swagger/OpenAPI dokumentacija.
-- Dockerized deployment za lako testiranje.
+- Docker deployment za lako testiranje.
 - Refresh token flow (access + refresh, rotacija refresh tokena).
 - Global `X-Request-ID`, structured JSON logging, osnovni rate limiting i secure response header-i.
 - Liveness/readiness endpoint-i za produkciono health praćenje.
